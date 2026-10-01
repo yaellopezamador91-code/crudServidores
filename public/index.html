@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Nombres - server.yaelito</title>
+  <!-- Bootstrap 5 CSS para diseño elegante -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome para íconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .btn-custom { border-radius: 8px; }
+  </style>
+</head>
+<body class="py-5">
+
+  <div class="container">
+    <!-- Encabezado -->
+    <div class="text-center mb-4">
+      <h1 class="fw-bold text-primary"><i class="fa-solid fa-users me-2"></i>Control de Nombres</h1>
+      <p class="text-muted">Servidor Activo: <span class="badge bg-success">www.server.yaelito</span></p>
+    </div>
+
+    <div class="row g-4">
+      <!-- Formulario para Crear / Editar -->
+      <div class="col-md-5">
+        <div class="card p-4">
+          <h5 class="card-title fw-bold mb-3" id="form-title">
+            <i class="fa-solid fa-user-plus text-primary me-2"></i>Agregar Nombre
+          </h5>
+          <form id="nombreForm">
+            <!-- ID Oculto para cuando se edita un registro -->
+            <input type="hidden" id="nombreId">
+
+            <div class="mb-3">
+              <label for="inputNombre" class="form-label text-secondary fw-semibold">Nombre Completo</label>
+              <input type="text" class="form-control" id="inputNombre" placeholder="Ej. Juan Pérez" required>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary btn-custom" id="btnGuardar">
+                <i class="fa-solid fa-floppy-disk me-1"></i> Guardar
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-custom d-none" id="btnCancelar" onclick="limpiarFormulario()">
+                Cancelar Edición
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tabla para Listar, Editar y Eliminar (CRUD) -->
+      <div class="col-md-7">
+        <div class="card p-4">
+          <h5 class="card-title fw-bold mb-3">
+            <i class="fa-solid fa-list text-primary me-2"></i>Lista de Nombres Registrados
+          </h5>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Nombre</th>
+                  <th scope="col" class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tablaCuerpo">
+                <!-- Se llena dinámicamente con JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script interactivo del Cliente -->
+  <script>
+    const API_URL = '/api/nombres'; // Ajusta según la ruta de tu API Node.js (ej. /nombres)
+
+    document.addEventListener('DOMContentLoaded', cargarNombres);
+
+    // 1. LEER (READ) - Obtener todos los nombres
+    async function cargarNombres() {
+      try {
+        const res = await fetch(API_URL);
+        const datos = await res.json();
+        const tabla = document.getElementById('tablaCuerpo');
+        tabla.innerHTML = '';
+
+        datos.forEach(item => {
+          tabla.innerHTML += `
+            <tr>
+              <td><span class="fw-bold text-secondary">#${item.id}</span></td>
+              <td>${item.nombre}</td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-warning me-1" onclick="prepararEditar(${item.id}, '${item.nombre}')">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarNombre(${item.id})">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (err) {
+        console.error('Error al cargar datos:', err);
+      }
+    }
+
+    // 2. CREAR / ACTUALIZAR (CREATE / UPDATE)
+    document.getElementById('nombreForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('nombreId').value;
+      const nombre = document.getElementById('inputNombre').value;
+
+      const esEdicion = id !== '';
+      const url = esEdicion ? `${API_URL}/${id}` : API_URL;
+      const metodo = esEdicion ? 'PUT' : 'POST';
+
+      try {
+        await fetch(url, {
+          method: metodo,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre })
+        });
+        limpiarFormulario();
+        cargarNombres();
+      } catch (err) {
+        console.error('Error al guardar:', err);
+      }
+    });
+
+    // Cargar datos en el formulario para Editar
+    function prepararEditar(id, nombre) {
+      document.getElementById('nombreId').value = id;
+      document.getElementById('inputNombre').value = nombre;
+      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-warning me-2"></i>Editar Nombre';
+      document.getElementById('btnGuardar').className = 'btn btn-warning btn-custom';
+      document.getElementById('btnCancelar').classList.remove('d-none');
+    }
+
+    // Limpiar campos del formulario
+    function limpiarFormulario() {
+      document.getElementById('nombreId').value = '';
+      document.getElementById('inputNombre').value = '';
+      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-user-plus text-primary me-2"></i>Agregar Nombre';
+      document.getElementById('btnGuardar').className = 'btn btn-primary btn-custom';
+      document.getElementById('btnCancelar').classList.add('d-none');
+    }
+
+    // 3. ELIMINAR (DELETE)
+    async function eliminarNombre(id) {
+      if (confirm('¿Deseas eliminar este registro?')) {
+        try {
+          await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+          cargarNombres();
+        } catch (err) {
+          console.error('Error al eliminar:', err);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+const app = express();
+const PORT = 80;
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+const db = new sqlite3.Database('./database.sqlite', (err) => {
+  if (err) {
+    console.error('Error al conectar con SQLite:', err.message);
+  } else {
+    console.log('Conectado a la base de datos SQLite.');
+  }
+});
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS nombres (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL
+  )
+`);
+
+// RUTAS API
+app.get('/api/nombres', (req, res) => {
+  db.all('SELECT * FROM nombres ORDER BY id DESC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/nombres', (req, res) => {
+  const { nombre } = req.body;
+  if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+
+  db.run('INSERT INTO nombres (nombre) VALUES (?)', [nombre], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ id: this.lastID, nombre });
+  });
+});
+
+app.put('/api/nombres/:id', (req, res) => {
+  const { nombre } = req.body;
+  const { id } = req.params;
+
+  db.run('UPDATE nombres SET nombre = ? WHERE id = ?', [nombre, id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ updated: this.changes });
+  });
+});
+
+app.delete('/api/nombres/:id', (req, res) => {
+  const { id } = req.params;
+
+  db.run('DELETE FROM nombres WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ deleted: this.changes });
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en http://www.server.yaelito`);
+});
